@@ -8,3 +8,4 @@ __pycache__/
 fonts/*.ttf
 models/
 out*/
+models/
