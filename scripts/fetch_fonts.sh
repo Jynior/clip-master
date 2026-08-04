@@ -1,5 +1,5 @@
 #!/bin/bash
-# Montserrat и Anton под SIL Open Font License. В репозитории не лежат,
+# Montserrat и Oswald под SIL Open Font License. В репозитории не лежат,
 # чтобы не тащить бинарники — скачиваются сюда.
 set -e
 DIR="$(cd "$(dirname "$0")/.." && pwd)/fonts"
