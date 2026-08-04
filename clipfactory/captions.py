@@ -48,7 +48,7 @@ STYLES = {
                 "узнаваемый стиль в лентах, поэтому и самый безопасный выбор.",
     },
     "threestate": {
-        "font": "Anton", "size": 94, "bold": 0,
+        "font": "Oswald", "size": 94, "bold": 0,
         "outline": 10, "shadow": 0, "margin_v": 380,
         "base": "#FFFFFF", "active": "#F59E0B", "upcoming": "#8E8E9C",
         "words_per_chunk": 3, "upper": True,
@@ -73,7 +73,7 @@ STYLES = {
                 "светлые сцены. Плашка гарантирует контраст.",
     },
     "neon": {
-        "font": "Anton", "size": 94, "bold": 0,
+        "font": "Oswald", "size": 94, "bold": 0,
         "outline": 3, "shadow": 3, "margin_v": 350,
         "base": "#FFFFFF", "active": "#00FFFF", "upcoming": None,
         "outline_colour": "#00FFFF",
@@ -192,7 +192,12 @@ def words_with_times(segments: list[dict], runs: list[tuple[float, float]],
 
 FONT_FILES = {
     "Montserrat": "Montserrat.ttf",
-    "Anton": "Anton.ttf",
+    # Anton заменён на Oswald: у Anton НЕТ кириллицы вообще (0 из 30 заглавных),
+    # и стили на нём рисовали пустые прямоугольники вместо русских букв.
+    # Oswald такой же узкий (208 px против 210 у Anton на «НАКЛЕЕК» при 60px),
+    # но с полной кириллицей.
+    "Oswald": "Oswald.ttf",
+    "Anton": "Oswald.ttf",
 }
 SAFE_TEXT_W = OUT_W - 2 * 70          # поля по 70 px с каждой стороны
 FONTS_DIR = Path(__file__).parent.parent / "fonts"
@@ -213,6 +218,29 @@ def _font(style: dict):
         return f
     except Exception:
         return None
+
+
+def cyrillic_ok(font) -> bool:
+    """
+    Есть ли в шрифте кириллица. Проверяется отрисовкой, а не метрикой: ширину
+    PIL возвращает и для отсутствующих глифов, поэтому замер ширины ничего не
+    доказывает — на этом и проехал Anton, рисовавший пустые прямоугольники.
+    """
+    if font is None:
+        return True
+    try:
+        from PIL import Image, ImageDraw
+        import numpy as np
+
+        def render(ch: str):
+            im = Image.new("L", (100, 100), 0)
+            ImageDraw.Draw(im).text((5, 5), ch, font=font, fill=255)
+            return np.asarray(im)
+
+        tofu = render("\uffff")
+        return not any(np.array_equal(render(c), tofu) for c in "АБВГЯЮЭ")
+    except Exception:
+        return True
 
 
 def text_width(font, s: str) -> float:
@@ -341,6 +369,10 @@ Style: Cap,{st['font']},{st['size']},{base},{active},{outline_col},&H64000000&,{
               "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
 
     font = _font(st)
+    if not cyrillic_ok(font):
+        print(f"ВНИМАНИЕ: в шрифте {st['font']} нет кириллицы — "
+              f"русский текст выйдет пустыми прямоугольниками.",
+              file=sys.stderr)
     # Смысловая разбивка: по паузам, точкам и служебным словам, затем перенос
     # по реальной ширине шрифта максимум на две строки (стандарт Netflix/BBC).
     import chunking as CH
