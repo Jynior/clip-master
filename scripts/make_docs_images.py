@@ -12,11 +12,15 @@ make_docs_images.py — схемы для документации в форма
 передаче через API (PNG пришлось бы гнать base64, а на этом легко получить
 двойную кодировку и битую картинку в README).
 
-Одна тонкость. Внутри SVG шрифт рисует браузер читателя, а не мы, поэтому
-ширина надписей у всех разная. Там, где от ширины зависит геометрия (подложка
-под активным словом в стиле «плашка»), ширина задана жёстко через textLength:
-рендерер обязан уложить текст ровно в эту ширину. Схема не разъезжается ни при
-каком наборе системных шрифтов.
+Одна тонкость. Внутри SVG шрифт рисует браузер читателя, а не мы, поэтому ширина
+надписей у всех разная. Значит геометрию, зависящую от ширины текста, вычислять
+нельзя вообще: слова верстает рендерер через tspan, а мы задаём только цвета.
+Раньше здесь была подложка под активным словом, которой требовались точные
+границы слова, — вместе со стилем «плашка» она убрана.
+
+Проверять схемы cairosvg нельзя: он игнорирует text-anchor у tspan и показывает
+слова наехавшими друг на друга там, где браузер верстает их правильно. Смотреть
+надо в браузере — им же смотрит и читатель на гитхабе.
 
     python3 scripts/make_docs_images.py
 """
@@ -168,16 +172,12 @@ def streamer_layout() -> str:
 
 
 def caption_styles() -> str:
-    """Четыре стиля субтитров: как каждый выглядит в кадре."""
+    """Два стиля субтитров: как каждый выглядит в кадре."""
     rows = [
         ("hormozi", UI, EM_UI, 76, "#ffffff", "#ffd93d", None,
          "белое + жёлтое активное слово"),
         ("три состояния", COND, EM_COND, 72, "#ffffff", "#f59e0b", "#8e8e9c",
          "сказанное / текущее / будущее"),
-        ("плашка", UI, EM_UI, 68, "#ffffff", "#ffffff", None,
-         "активное слово на подложке"),
-        ("неон", COND, EM_COND, 72, "#ffffff", "#00ffff", None,
-         "тонкая цветная обводка со свечением"),
     ]
     words = ["ЦЕНА ", "НАКЛЕЕК ", "1760"]
     rh, top = 420, 120
@@ -189,9 +189,7 @@ def caption_styles() -> str:
     b.append('<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="0">'
              '<stop offset="0" stop-color="#141620"/>'
              '<stop offset="1" stop-color="#dcdee6"/></linearGradient>'
-             '<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">'
-             '<feDropShadow dx="0" dy="0" stdDeviation="7" '
-             'flood-color="#00ffff" flood-opacity="0.85"/></filter></defs>')
+             '</defs>')
     b.append(txt(W / 2, 62, "стили субтитров", 54, "#f0f2f8",
                  anchor="middle", weight=800))
 
@@ -200,32 +198,26 @@ def caption_styles() -> str:
         b.append(rect(0, y0, W, rh - 30, "url(#g)"))
         b.append(txt(40, y0 + 60, name, 40, "#ffffff"))
         b.append(txt(40, y0 + 104, note, 28, "#bec4d2"))
+        b.append(txt(40, y0 + 142, "одна строка, низ на y=1420 — позиция не меняется",
+                     24, "#8b93a6"))
 
         # Слова верстает сам рендерер: одна надпись по центру, слова внутри —
         # tspan со своим цветом. Мы не считаем ширины, поэтому строка не
         # разъезжается ни на каком наборе шрифтов.
         ty = y0 + rh - 130
-        bord = {"hormozi": 8, "три состояния": 8, "плашка": 4, "неон": 3}[name]
+        bord = 8          # обводка одинаковая: она и держит читаемость
 
         spans = []
         for j, w in enumerate(words):
             col = active if j == 1 else (upcoming if (upcoming and j > 1) else base)
-            extra = ""
-            if name == "плашка" and j == 1:
-                # подложка = толстый цветной штрих вокруг самого слова.
-                # Прямоугольник пришлось бы позиционировать по ширине текста,
-                # а её мы принципиально не знаем — штрих же обнимает глифы сам.
-                extra = (' stroke="#ff2d55" stroke-width="18" '
-                         'stroke-linejoin="round" paint-order="stroke"')
-            spans.append(f'<tspan fill="{col}"{extra}>{escape(w)}</tspan>')
+            spans.append(f'<tspan fill="{col}">{escape(w)}</tspan>')
 
         el = (f'<text x="{W / 2:.0f}" y="{ty:.0f}" xml:space="preserve" '
               f'text-anchor="middle" font-family="{fam}" font-size="{size}" '
               f'font-weight="800" fill="{base}" stroke="#000000" '
               f'stroke-width="{bord}" stroke-linejoin="round" '
               f'paint-order="stroke">' + "".join(spans) + '</text>')
-        # у неона обводка ещё и светится
-        b.append(f'<g filter="url(#glow)">{el}</g>' if name == "неон" else el)
+        b.append(el)
 
     return svg(W, total_h, b, "#101218")
 

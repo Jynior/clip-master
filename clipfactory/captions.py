@@ -8,8 +8,13 @@ captions.py — караоке-субтитры в стиле TikTok через 
 раскладываются внутри них пропорционально длине. Так подсветка попадает в голос,
 а не плывёт от накопленной ошибки.
 
-Стили взяты по замерам того, что реально используют: Hormozi (белый + жёлтое
-активное слово), три состояния (Submagic) и «пилюля» с плашкой.
+Два стиля, оба с подсветкой звучащего слова: Hormozi (белый текст, активное слово
+жёлтым) и три состояния (сказанное белое, текущее янтарное, будущее серое).
+Раньше было четыре — «плашка» и «неон» убраны, причины в разделе ниже.
+
+Позиция субтитров фиксирована: один показ = одна строка, поэтому строка стоит на
+одном и том же y от начала до конца клипа. Проверяется отдельным модулем
+check_captions.py по готовому mp4, а не на глаз.
 
 Использование:
     python3 captions.py --audio clip.mp3 --segments segs.json --style hormozi --out cap.ass
@@ -34,10 +39,24 @@ def rgb_to_ass(hex_rgb: str, alpha: str = "00") -> str:
     return f"&H{alpha}{b}{g}{r}&".upper()
 
 
+# Безопасные зоны TikTok — те же числа, что в variants.py. Держим их и здесь,
+# потому что прежний дефолт margin_v 380 сажал низ текста на y=1540, то есть ПОД
+# ник, подпись и прогресс. Проверять это должен код, а не память оператора.
+SAFE_BOTTOM = 1460         # ниже — интерфейс TikTok
+VIDEO_BAND_BOTTOM = 1264   # ниже — размытая подложка, картинки там уже нет
+
+# Показ всегда в ОДНУ строку. Это не косметика, а способ прибить позицию гвоздями.
+# При двух строках блок прижат к низу и растёт ВВЕРХ, поэтому двухстрочный показ
+# уезжает на высоту строки. На реальном клипе замерено: два положения, 1170 и
+# 1265, разница 95 px, 56 переключений за 66 секунд — это и есть «субтитры
+# плавают туда-сюда». Одна строка делает позицию единственной по построению:
+# не сглаживает дрожание, а исключает его.
+MAX_LINES = 1
+
 STYLES = {
     "hormozi": {
         "font": "Montserrat", "size": 100, "bold": -1,
-        "outline": 10, "shadow": 0, "margin_v": 380,
+        "outline": 10, "shadow": 0, "margin_v": 500,
         "base": "#FFFFFF", "active": "#FFD93D", "upcoming": None,
         "words_per_chunk": 3, "upper": True,
         "note": "Белый текст, активное слово жёлтым. Рабочая лошадка.",
@@ -49,7 +68,7 @@ STYLES = {
     },
     "threestate": {
         "font": "Oswald", "size": 94, "bold": 0,
-        "outline": 10, "shadow": 0, "margin_v": 380,
+        "outline": 10, "shadow": 0, "margin_v": 500,
         "base": "#FFFFFF", "active": "#F59E0B", "upcoming": "#8E8E9C",
         "words_per_chunk": 3, "upper": True,
         "note": "Три состояния: сказанное, текущее и будущее разными цветами.",
@@ -59,32 +78,28 @@ STYLES = {
         "fits": "Длинные фразы и плотную речь: серый цвет будущих слов не "
                 "даёт дочитать вперёд голоса и подсказывает ритм.",
     },
-    "pill": {
-        "font": "Montserrat", "size": 88, "bold": -1,
-        "outline": 4, "shadow": 0, "margin_v": 380,
-        "base": "#FFFFFF", "active": "#FFFFFF", "upcoming": None,
-        "pill_bg": "#FF2D55",
-        "words_per_chunk": 3, "upper": True,
-        "note": "Активное слово на цветной плашке.",
-        "looks": "Текст белый без яркой подсветки, зато под звучащим словом "
-                 "едет цветной прямоугольник. Акцент даёт не цвет буквы, а "
-                 "подложка — заметнее на пёстром фоне.",
-        "fits": "Яркий насыщенный кадр, где жёлтая буква теряется: геймплей, "
-                "светлые сцены. Плашка гарантирует контраст.",
-    },
-    "neon": {
-        "font": "Oswald", "size": 94, "bold": 0,
-        "outline": 3, "shadow": 3, "margin_v": 350,
-        "base": "#FFFFFF", "active": "#00FFFF", "upcoming": None,
-        "outline_colour": "#00FFFF",
-        "words_per_chunk": 2, "upper": True,
-        "note": "Неоновое свечение, активное слово голубое.",
-        "looks": "Тонкая цветная обводка с тенью вместо толстой чёрной, "
-                 "активное слово голубое. По два слова за показ вместо трёх — "
-                 "текст занимает меньше кадра.",
-        "fits": "Тёмный и ночной материал, гейминг. На светлом фоне не "
-                "использовать: тонкая обводка не держит контраст.",
-    },
+}
+
+# Убранные стили и причины. Оставлено в коде намеренно: чтобы через месяц никто
+# не «вернул полезную фичу», не зная, чем она кончилась.
+#
+# «плашка» (активное слово на розовой подложке). Подложке нужно знать точные
+# пиксельные границы слова, а их приходилось считать самим — libass рисует текст
+# своими метриками, и они не совпадают с измеренными. Отсюда тянулась череда
+# дефектов: подложка уезжала при переносе строки, систематический сдвиг влево
+# из-за ведущего пробела в словах, торчащий из-под подложки край буквы. Вдобавок
+# подложка достаётся и служебным словам: «НЕ», «ИЗ», «И» получают широкий розовый
+# квадрат с непропорциональными полями и читаются как сбой рендера. Стиль требует
+# пиксельной точности там, где её негде взять.
+#
+# «неон» (тонкая голубая обводка со свечением). Обводка 3 px против 10 у рабочих
+# стилей не держит контраст на светлом кадре — текст исчезает. Стиль, который
+# нельзя применять к половине материала, не годится в набор по умолчанию.
+#
+# Оба вернуть можно из истории git, вместе с этим объяснением.
+REMOVED_STYLES = {
+    "pill": "нужна пиксельная точность границ слова, которой негде взять",
+    "neon": "обводка 3 px не держит контраст на светлом кадре",
 }
 
 
@@ -276,22 +291,6 @@ def fit_chunks(words: list[dict], style: dict) -> list[list[dict]]:
     return out
 
 
-def word_positions(chunk: list[dict], style: dict) -> list[tuple[float, float]]:
-    """Абсолютные x-границы каждого слова в отцентрованной строке — для плашки."""
-    font = _font(style)
-    up = style["upper"]
-    words = [(w["word"].upper() if up else w["word"]) for w in chunk]
-    space = text_width(font, " ") or 10
-    widths = [text_width(font, w) for w in words]
-    total = sum(widths) + space * (len(words) - 1)
-    x = (OUT_W - total) / 2
-    spans = []
-    for wd in widths:
-        spans.append((x, x + wd))
-        x += wd + space
-    return spans
-
-
 def fmt_time(t: float) -> str:
     t = max(0.0, t)
     h = int(t // 3600); m = int(t % 3600 // 60); s = t % 60
@@ -326,6 +325,19 @@ def apply_fixes(words: list[dict]) -> tuple[list[dict], list[tuple[str, str]]]:
     return out, changed
 
 
+def band_of(style: dict) -> tuple[int, int]:
+    """
+    Где окажется строка при заданном margin_v: (верх, низ) в пикселях кадра.
+
+    Выравнивание 2 в ASS означает «прижать к низу», а margin_v — расстояние от
+    низа КАДРА до низа строки. Высота строки берётся как 1.2 кегля (обычная
+    метрика для этих шрифтов) плюс обводка с обеих сторон.
+    """
+    bottom = OUT_H - style["margin_v"] + int(style["outline"])
+    top = OUT_H - style["margin_v"] - int(style["size"] * 1.2) - int(style["outline"])
+    return top, bottom
+
+
 def build_ass(words: list[dict], style_name: str,
               margin_v: int | None = None,
               font_size: int | None = None,
@@ -343,6 +355,17 @@ def build_ass(words: list[dict], style_name: str,
         st["shadow"] = shadow
     if max_words is not None:
         st["words_per_chunk"] = max_words
+
+    # Предупреждаем СРАЗУ, до рендера: заезд под интерфейс TikTok иначе
+    # обнаруживается только на залитом ролике. Именно так и прожил дефолт 380,
+    # сажавший низ текста на y=1540 при границе интерфейса 1460.
+    top, bottom = band_of(st)
+    if bottom > SAFE_BOTTOM:
+        print(f"ВНИМАНИЕ: при margin_v={st['margin_v']} низ текста уходит на "
+              f"y={bottom}, а интерфейс TikTok начинается с {SAFE_BOTTOM}. "
+              f"Ник, подпись и прогресс перекроют субтитры. "
+              f"Нужен margin_v не меньше {OUT_H - SAFE_BOTTOM + int(st['outline'])}.",
+              file=sys.stderr)
     base = rgb_to_ass(st["base"])
     active = rgb_to_ass(st["active"])
     upcoming = rgb_to_ass(st["upcoming"]) if st.get("upcoming") else base
@@ -359,12 +382,6 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Cap,{st['font']},{st['size']},{base},{active},{outline_col},&H64000000&,{st['bold']},0,0,0,100,100,0,0,1,{st['outline']},{st['shadow']},2,70,70,{st['margin_v']},1
 """
-    if style_name == "pill":
-        pill = rgb_to_ass(st["pill_bg"])
-        header += (f"Style: Pill,{st['font']},{st['size']},{base},{base},{pill},"
-                   f"{pill},{st['bold']},0,0,0,100,100,0,0,3,14,0,2,70,70,"
-                   f"{st['margin_v']},1\n")
-
     events = ["\n[Events]",
               "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
 
@@ -373,60 +390,40 @@ Style: Cap,{st['font']},{st['size']},{base},{active},{outline_col},&H64000000&,{
         print(f"ВНИМАНИЕ: в шрифте {st['font']} нет кириллицы — "
               f"русский текст выйдет пустыми прямоугольниками.",
               file=sys.stderr)
-    # Смысловая разбивка: по паузам, точкам и служебным словам, затем перенос
-    # по реальной ширине шрифта максимум на две строки (стандарт Netflix/BBC).
+    # Смысловая разбивка: по паузам, точкам и служебным словам. Дальше показ
+    # приводится к ОДНОЙ строке: что не влезло, делится на два показа, а не
+    # переносится вниз. Перенос — это и есть причина плавания позиции.
     import chunking as CH
     groups = CH.chunk_words(words, max_words=st["words_per_chunk"],
                             width_fn=lambda t: text_width(font, t), max_chars=60)
     shows = CH.fit_to_width(groups, lambda t: text_width(font, t),
-                            SAFE_TEXT_W, max_lines=2, upper=st["upper"])
+                            SAFE_TEXT_W, max_lines=MAX_LINES, upper=st["upper"])
     chunks = [s["words"] for s in shows]
-    lines_of = {id(s["words"]): s["lines"] for s in shows}
-    y_line = OUT_H - st["margin_v"]      # базовая линия строки для \pos
 
     for ch in chunks:
-        cur_lines = lines_of.get(id(ch)) or [ch]
-        # одиночное длинное слово разбить нельзя — сжимаем строку по ширине
-        widest = max(
-            text_width(font, " ".join(
-                (w["word"].upper() if st["upper"] else w["word"]) for w in ln))
-            for ln in cur_lines)
+        # одиночное слово шире кадра разбить нельзя — сжимаем строку по ширине.
+        # \fscy не трогаем: он менял бы высоту строки, а с ней и позицию.
+        text = " ".join((w["word"].upper() if st["upper"] else w["word"])
+                        for w in ch)
+        width = text_width(font, text)
         fit = ""
-        if widest > SAFE_TEXT_W:
-            sc = max(55, int(100 * SAFE_TEXT_W / widest))
-            fit = f"\\fscx{sc}\\fscy{sc}"
+        if width > SAFE_TEXT_W:
+            sc = max(55, int(100 * SAFE_TEXT_W / width))
+            fit = f"\\fscx{sc}"
 
-        spans = word_positions(ch, st) if style_name == "pill" else None
         for k, w in enumerate(ch):
-            # подсветка держится сквозь перенос: строки склеиваются через \N
-            rendered = []
-            idx = 0
-            for ln in cur_lines:
-                seg = []
-                for ww in ln:
-                    txt = ww["word"].upper() if st["upper"] else ww["word"]
-                    if idx < k:
-                        seg.append(f"{{\\c{base}}}{txt}")
-                    elif idx == k:
-                        seg.append(f"{{\\c{active}}}{txt}")
-                    else:
-                        seg.append(f"{{\\c{upcoming}}}{txt}")
-                    idx += 1
-                rendered.append(" ".join(seg))
-            line = (f"{{{fit}}}" if fit else "") + "\\N".join(rendered)
+            seg = []
+            for idx, ww in enumerate(ch):
+                txt = ww["word"].upper() if st["upper"] else ww["word"]
+                if idx < k:
+                    seg.append(f"{{\\c{base}}}{txt}")
+                elif idx == k:
+                    seg.append(f"{{\\c{active}}}{txt}")
+                else:
+                    seg.append(f"{{\\c{upcoming}}}{txt}")
+            line = (f"{{{fit}}}" if fit else "") + " ".join(seg)
             s, e = fmt_time(w["start"]), fmt_time(w["end"])
-            if style_name == "pill" and spans:
-                # плашка ставится по измеренной середине активного слова,
-                # иначе она уезжает в центр строки
-                x0, x1 = spans[k]
-                cx = (x0 + x1) / 2
-                act = ch[k]["word"].upper() if st["upper"] else ch[k]["word"]
-                events.append(
-                    f"Dialogue: 0,{s},{e},Pill,,0,0,0,,"
-                    f"{{\\an5\\pos({cx:.0f},{y_line - st['size'] * 0.36:.0f})}}{act}")
-                events.append(f"Dialogue: 1,{s},{e},Cap,,0,0,0,,{line}")
-            else:
-                events.append(f"Dialogue: 0,{s},{e},Cap,,0,0,0,,{line}")
+            events.append(f"Dialogue: 0,{s},{e},Cap,,0,0,0,,{line}")
 
     return header + "\n".join(events) + "\n"
 
@@ -440,7 +437,7 @@ def main() -> None:
     ap.add_argument("--segments", default=None, help="JSON транскрипта")
     ap.add_argument("--clip-start", type=float, default=0.0,
                     help="начало клипа в координатах исходника")
-    ap.add_argument("--clip-dur", type=float, required=True)
+    ap.add_argument("--clip-dur", type=float, default=None)
     ap.add_argument("--style", choices=list(STYLES), default="hormozi")
     ap.add_argument("--margin-v", type=int, default=None,
                     help="отступ снизу до низа текста, px (перебивает стиль)")
@@ -454,7 +451,7 @@ def main() -> None:
                     help="максимум слов на показ (2-3 держат синхрон с голосом)")
     ap.add_argument("--no-fixes", action="store_true",
                     help="не применять словарь ослышек")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out", default=None)
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--styles", action="store_true",
                     help="показать, за что отвечает каждый стиль, и выйти")
@@ -468,9 +465,22 @@ def main() -> None:
             print(f"  шрифт {st['font']} {st['size']} px, обводка "
                   f"{st['outline']} px, слов на показ {st['words_per_chunk']}")
             print(f"  цвета: базовый {st['base']}, активный {st['active']}"
-                  + (f", будущий {st['upcoming']}" if st.get('upcoming') else "")
-                  + (f", плашка {st['pill_bg']}" if st.get('pill_bg') else ""))
+                  + (f", будущий {st['upcoming']}" if st.get('upcoming') else ""))
+            print(f"  позиция:  низ строки y={OUT_H - st['margin_v']}, "
+                  f"одна строка, не смещается за клип")
+        if REMOVED_STYLES:
+            print("\nубраны:")
+            for name, why in REMOVED_STYLES.items():
+                print(f"  {name} — {why}")
         return
+
+    # --styles показывает справку и выходит, поэтому обязательность проверяем
+    # здесь, а не в argparse: иначе за справкой пришлось бы передавать рендерные
+    # параметры, которых для неё нет.
+    missing = [n for n, v in (("--clip-dur", args.clip_dur), ("--out", args.out))
+               if v is None]
+    if missing:
+        raise SystemExit(f"Не хватает аргументов: {', '.join(missing)}")
 
     runs: list[tuple[float, float]] = []
     if args.words:
