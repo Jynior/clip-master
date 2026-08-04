@@ -29,9 +29,9 @@
 
 <table>
 <tr>
-<td width="33%" align="center"><img src="docs/canvas.png" alt="Мёртвые зоны и позиции субтитров"><br><sub><b>Мёртвые зоны TikTok</b><br>и позиции субтитров</sub></td>
-<td width="33%" align="center"><img src="docs/streamer_layout.png" alt="Раскладка Стример"><br><sub><b>Раскладка «Стример»</b><br>стык на 45% высоты</sub></td>
-<td width="33%" align="center"><img src="docs/caption_styles.png" alt="Стили субтитров"><br><sub><b>Четыре стиля</b><br>на светлом и тёмном фоне</sub></td>
+<td width="33%" align="center"><img src="docs/canvas.svg" alt="Мёртвые зоны и позиции субтитров"><br><sub><b>Мёртвые зоны TikTok</b><br>и позиции субтитров</sub></td>
+<td width="33%" align="center"><img src="docs/streamer_layout.svg" alt="Раскладка Стример"><br><sub><b>Раскладка «Стример»</b><br>стык на 45% высоты</sub></td>
+<td width="33%" align="center"><img src="docs/caption_styles.svg" alt="Стили субтитров"><br><sub><b>Четыре стиля</b><br>на светлом и тёмном фоне</sub></td>
 </tr>
 </table>
 
@@ -257,7 +257,7 @@ python3 clipfactory/captions.py --audio clip.wav --segments t.json \
 
 #### За что отвечает каждый стиль
 
-<img src="docs/caption_styles.png" align="right" width="240" alt="Стили субтитров">
+<img src="docs/caption_styles.svg" align="right" width="240" alt="Стили субтитров">
 
 Посмотреть из командной строки: `python3 clipfactory/captions.py --styles`
 
@@ -371,7 +371,7 @@ python3 clipfactory/streamer.py --top webcam.mp4 --bottom gameplay.mp4 \
   --out out.mp4 --dur 45 --captions cap.ass --auto-focus --draft
 ```
 
-<img src="docs/streamer_layout.png" align="right" width="220" alt="Раскладка Стример">
+<img src="docs/streamer_layout.svg" align="right" width="220" alt="Раскладка Стример">
 
 Пропорции замерены по реальному ролику из ленты, а не придуманы: стык на 45%
 высоты, верхняя панель 1080x864, нижняя 1080x1056, центр строки субтитров на
@@ -512,7 +512,7 @@ python3 clipfactory/build.py source.mp4 --target 60 \
 
 ### Безопасные зоны TikTok на 1080×1920
 
-<img src="docs/canvas.png" align="right" width="220" alt="Мёртвые зоны">
+<img src="docs/canvas.svg" align="right" width="220" alt="Мёртвые зоны">
 
 | Зона | Границы |
 |---|---|

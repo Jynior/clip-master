@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="453" height="806" role="img">
+<rect x="0" y="0" width="1080" height="1920" fill="#f8f9fb" fill-opacity="1.0"/>
+<rect x="0" y="0" width="1080" height="250" fill="#ff5c5c" fill-opacity="0.18"/>
+<text x="28" y="52" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c">верх перекрыт вкладками — до 250</text>
+<rect x="0" y="1460" width="1080" height="460" fill="#ff5c5c" fill-opacity="0.18"/>
+<text x="28" y="1496" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c">низ перекрыт: ник, подпись, трек — от 1460</text>
+<rect x="1000" y="250" width="80" height="1210" fill="#ff5c5c" fill-opacity="0.18"/>
+<text x="988" y="716" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c" text-anchor="end">кнопки</text>
+<text x="988" y="754" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c" text-anchor="end">лайк</text>
+<text x="988" y="792" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c" text-anchor="end">коммент</text>
+<text x="988" y="830" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c" text-anchor="end">репост</text>
+<text x="988" y="1444" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ff5c5c" text-anchor="end">правая полоса — от 1000</text>
+<rect x="60" y="250" width="940" height="1210" fill="none" fill-opacity="1.0" stroke="#42b883" stroke-width="5"/>
+<text x="78" y="300" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#42b883">безопасная область 940 x 1210</text>
+<rect x="0" y="656" width="1080" height="608" fill="#4a90ff" fill-opacity="0.16" stroke="#4a90ff" stroke-width="4"/>
+<text x="28" y="706" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#4a90ff">полоса видео при леттербоксе 100%</text>
+<text x="28" y="746" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#4a90ff">656 – 1264</text>
+<line x1="90" y1="600" x2="990" y2="600" stroke="#ffd93d" stroke-width="6"/>
+<text x="100" y="580" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#8a6f00">над полосой   MarginV 1290</text>
+<line x1="90" y1="1360" x2="990" y2="1360" stroke="#ffd93d" stroke-width="6"/>
+<text x="100" y="1340" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#8a6f00">под полосой   MarginV 480</text>
+<line x1="90" y1="960" x2="990" y2="960" stroke="#ffd93d" stroke-width="6"/>
+<text x="100" y="940" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#8a6f00">внутри кадра   MarginV 900</text>
+<text x="540" y="140" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="54" font-weight="800" fill="#181a20" text-anchor="middle">1080 x 1920</text>
+<text x="540" y="200" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#6e7480" text-anchor="middle">мёртвые зоны TikTok и позиции субтитров</text>
+</svg>

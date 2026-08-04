@@ -1,196 +1,243 @@
 #!/usr/bin/env python3
 """
-make_docs_images.py — схемы для документации.
+make_docs_images.py — схемы для документации в формате SVG.
 
 Рисует то, что иначе приходится держать в голове: где у TikTok мёртвые зоны,
-как устроена двойная раскладка, как выглядят стили субтитров. Схемы, а не
-кадры из чужих роликов: спецификация нагляднее одного примера.
+как устроена двойная раскладка, как выглядят стили субтитров. Схемы, а не кадры
+из чужих роликов: спецификация нагляднее одного примера.
+
+Почему SVG, а не PNG. Схемы состоят из прямоугольников, линий и подписей —
+для такого растр только вредит: он мылится на зуме и весит в разы больше.
+Плюс SVG — текстовый файл, поэтому он уходит в git как код и не ломается при
+передаче через API (PNG пришлось бы гнать base64, а на этом легко получить
+двойную кодировку и битую картинку в README).
+
+Одна тонкость. Внутри SVG шрифт рисует браузер читателя, а не мы, поэтому
+ширина надписей у всех разная. Там, где от ширины зависит геометрия (подложка
+под активным словом в стиле «плашка»), ширина задана жёстко через textLength:
+рендерер обязан уложить текст ровно в эту ширину. Схема не разъезжается ни при
+каком наборе системных шрифтов.
 
     python3 scripts/make_docs_images.py
 """
 from __future__ import annotations
 
 from pathlib import Path
-
-from PIL import Image, ImageDraw, ImageFont
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).parent.parent
-FONTS = ROOT / "fonts"
 OUT = ROOT / "docs"
 
 W, H = 1080, 1920
-SCALE = 0.42                      # схемы отдаём уменьшенными, читаемости хватает
+SCALE = 0.42                      # во что схема отрисуется по умолчанию в README
 
-INK = (24, 26, 32)
-PAPER = (248, 249, 251)
-LINE = (188, 194, 208)
-DANGER = (255, 92, 92)
-SAFE = (66, 184, 131)
-ACCENT = (255, 217, 61)
-BLUE = (74, 144, 255)
+INK = "#181a20"
+PAPER = "#f8f9fb"
+DANGER = "#ff5c5c"
+SAFE = "#42b883"
+ACCENT = "#ffd93d"
+BLUE = "#4a90ff"
+MUTED = "#6e7480"
 
+# Шрифтовые стеки: сначала наши шрифты (если стоят в системе), потом надёжные
+# запасные. sans-serif в конце гарантирует кириллицу где угодно.
+UI = "Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+COND = "Oswald, 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif"
 
-def font(name: str, size: int):
-    p = FONTS / name
-    try:
-        f = ImageFont.truetype(str(p), size)
-        if name.startswith("Montserrat"):
-            try:
-                f.set_variation_by_axes([900])
-            except Exception:
-                pass
-        return f
-    except Exception:
-        return ImageFont.load_default()
+# Средняя ширина глифа в долях кегля — нужна только чтобы посчитать textLength.
+# Дальше рендерер подгоняет текст под эту ширину, так что точность здесь не
+# критична: важно лишь, чтобы пропорции слов были похожи на правду.
+EM_UI = 0.62
+EM_COND = 0.50
 
 
-def ui(size: int):
-    for n in ("Montserrat.ttf", "Oswald.ttf"):
-        if (FONTS / n).exists():
-            return font(n, size)
-    return ImageFont.load_default()
+def txt(x: float, y: float, s: str, size: int, fill: str = INK,
+        anchor: str = "start", family: str = UI, weight: int = 700,
+        length: float | None = None, stroke: str | None = None,
+        sw: float = 0.0) -> str:
+    """
+    Одна надпись. anchor: start | middle | end.
+
+    Обводка (stroke) рисуется тем же элементом, а не второй копией текста снизу:
+    paint-order="stroke" велит рендереру положить штрих ПОД заливку. Копия текста
+    дала бы двойной набор глифов и рассинхрон при переносе шрифта.
+    """
+    a = f' text-anchor="{anchor}"' if anchor != "start" else ""
+    tl = (f' textLength="{length:.0f}" lengthAdjust="spacingAndGlyphs"'
+          if length else "")
+    so = (f' stroke="{stroke}" stroke-width="{sw:.1f}" stroke-linejoin="round"'
+          f' paint-order="stroke"' if stroke else "")
+    return (f'<text x="{x:.0f}" y="{y:.0f}" font-family="{family}" '
+            f'font-size="{size}" font-weight="{weight}" fill="{fill}"'
+            f'{a}{tl}{so}>{escape(s)}</text>')
 
 
-def label(d: ImageDraw.ImageDraw, xy, text, f, fill=INK, anchor="la"):
-    d.text(xy, text, font=f, fill=fill, anchor=anchor)
+def rect(x: float, y: float, w: float, h: float, fill: str = "none",
+         stroke: str | None = None, sw: int = 0, op: float = 1.0,
+         r: int = 0) -> str:
+    st = f' stroke="{stroke}" stroke-width="{sw}"' if stroke else ""
+    rr = f' rx="{r}"' if r else ""
+    return (f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" '
+            f'fill="{fill}" fill-opacity="{op}"{st}{rr}/>')
 
 
-def canvas_map() -> Image.Image:
+def line(x1: float, y1: float, x2: float, y2: float,
+         stroke: str, sw: int = 6) -> str:
+    return (f'<line x1="{x1:.0f}" y1="{y1:.0f}" x2="{x2:.0f}" y2="{y2:.0f}" '
+            f'stroke="{stroke}" stroke-width="{sw}"/>')
+
+
+def svg(width: int, height: int, body: list[str], bg: str) -> str:
+    vw, vh = int(width * SCALE), int(height * SCALE)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 {width} {height}" width="{vw}" height="{vh}" '
+            f'role="img">\n'
+            f'{rect(0, 0, width, height, bg)}\n' +
+            "\n".join(body) + "\n</svg>\n")
+
+
+def canvas_map() -> str:
     """Холст 1080x1920: мёртвые зоны интерфейса и позиции субтитров."""
-    im = Image.new("RGB", (W, H), PAPER)
-    d = ImageDraw.Draw(im, "RGBA")
-    f_big, f_mid, f_sm = ui(54), ui(38), ui(30)
+    b: list[str] = []
 
-    # мёртвые зоны
-    zones = [
-        (0, 0, W, 250, "верх перекрыт вкладками — до 250"),
-        (0, 1460, W, H, "низ перекрыт: ник, подпись, трек — от 1460"),
-        (1000, 250, W, 1460, None),
-    ]
-    for x0, y0, x1, y1, cap in zones:
-        d.rectangle([x0, y0, x1, y1], fill=DANGER + (46,))
-        if cap:
-            label(d, (28, y0 + 16 if y0 == 0 else y0 + 16), cap, f_sm, DANGER)
-    # подпись к правой полосе ставим ВНУТРЬ кадра: за краем она обрезается
-    for k, line in enumerate(("кнопки", "лайк", "коммент", "репост")):
-        label(d, (988, 690 + k * 38), line, f_sm, DANGER, anchor="ra")
-    label(d, (988, 1418), "правая полоса — от 1000", f_sm, DANGER, anchor="ra")
+    # мёртвые зоны интерфейса
+    b.append(rect(0, 0, W, 250, DANGER, op=0.18))
+    b.append(txt(28, 52, "верх перекрыт вкладками — до 250", 30, DANGER))
+    b.append(rect(0, 1460, W, H - 1460, DANGER, op=0.18))
+    b.append(txt(28, 1496, "низ перекрыт: ник, подпись, трек — от 1460", 30, DANGER))
+    b.append(rect(1000, 250, W - 1000, 1210, DANGER, op=0.18))
+
+    # подписи правой полосы ставим ВНУТРЬ кадра: за краем они обрежутся
+    for k, s in enumerate(("кнопки", "лайк", "коммент", "репост")):
+        b.append(txt(988, 716 + k * 38, s, 30, DANGER, anchor="end"))
+    b.append(txt(988, 1444, "правая полоса — от 1000", 30, DANGER, anchor="end"))
 
     # безопасная область
-    d.rectangle([60, 250, 1000, 1460], outline=SAFE, width=5)
-    label(d, (78, 268), "безопасная область 940 x 1210", f_sm, SAFE)
+    b.append(rect(60, 250, 940, 1210, "none", SAFE, 5))
+    b.append(txt(78, 300, "безопасная область 940 x 1210", 30, SAFE))
 
     # полоса видео при леттербоксе 100%
-    d.rectangle([0, 656, W, 1264], fill=BLUE + (40,), outline=BLUE, width=4)
-    label(d, (28, 672), "полоса видео при леттербоксе 100%", f_mid, BLUE)
-    label(d, (28, 712), "656 – 1264", f_sm, BLUE)
+    b.append(rect(0, 656, W, 608, BLUE, BLUE, 4, op=0.16))
+    b.append(txt(28, 706, "полоса видео при леттербоксе 100%", 38, BLUE))
+    b.append(txt(28, 746, "656 – 1264", 30, BLUE))
 
     # позиции субтитров
     for y, name, mv in ((600, "над полосой", 1290),
                         (1360, "под полосой", 480),
                         (960, "внутри кадра", 900)):
-        d.line([90, y, 990, y], fill=ACCENT, width=6)
-        label(d, (100, y - 44), f"{name}   MarginV {mv}", f_mid, (150, 120, 0))
+        b.append(line(90, y, 990, y, ACCENT))
+        b.append(txt(100, y - 20, f"{name}   MarginV {mv}", 38, "#8a6f00"))
 
-    label(d, (W // 2, 120), "1080 x 1920", f_big, INK, anchor="ma")
-    label(d, (W // 2, 186), "мёртвые зоны TikTok и позиции субтитров",
-          f_sm, (110, 116, 130), anchor="ma")
-    return im
+    b.append(txt(W / 2, 140, "1080 x 1920", 54, INK, anchor="middle", weight=800))
+    b.append(txt(W / 2, 200, "мёртвые зоны TikTok и позиции субтитров",
+                 30, MUTED, anchor="middle"))
+    return svg(W, H, b, PAPER)
 
 
-def streamer_layout() -> Image.Image:
+def streamer_layout() -> str:
     """Двойная раскладка: стык на 45% высоты."""
-    im = Image.new("RGB", (W, H), PAPER)
-    d = ImageDraw.Draw(im, "RGBA")
-    f_big, f_mid, f_sm = ui(54), ui(40), ui(30)
-
+    b: list[str] = []
     split = int(H * 0.45)
-    d.rectangle([0, 0, W, split], fill=(96, 132, 200, 70), outline=BLUE, width=4)
-    d.rectangle([0, split, W, H], fill=(96, 176, 132, 70), outline=SAFE, width=4)
 
-    label(d, (W // 2, split // 2 - 70), "ВЕРХ", f_big, INK, anchor="ma")
-    label(d, (W // 2, split // 2 - 6), "говорящий, вебка", f_mid, INK, anchor="ma")
-    label(d, (W // 2, split // 2 + 46), "1080 x 864   даёт звук", f_sm,
-          (70, 76, 92), anchor="ma")
+    b.append(rect(0, 0, W, split, "#6084c8", BLUE, 4, op=0.28))
+    b.append(rect(0, split, W, H - split, "#60b084", SAFE, 4, op=0.28))
+
+    mid = split // 2
+    b.append(txt(W / 2, mid - 40, "ВЕРХ", 54, INK, anchor="middle", weight=800))
+    b.append(txt(W / 2, mid + 26, "говорящий, вебка", 40, INK, anchor="middle"))
+    b.append(txt(W / 2, mid + 80, "1080 x 864   даёт звук", 30, "#464c5c",
+                 anchor="middle"))
 
     ly = split + (H - split) // 2
-    label(d, (W // 2, ly - 70), "НИЗ", f_big, INK, anchor="ma")
-    label(d, (W // 2, ly - 6), "посторонний исходник", f_mid, INK, anchor="ma")
-    label(d, (W // 2, ly + 46), "1080 x 1056   звук не нужен", f_sm,
-          (70, 76, 92), anchor="ma")
-    label(d, (W // 2, ly + 96), "короче ролика — зациклится", f_sm,
-          (70, 76, 92), anchor="ma")
+    b.append(txt(W / 2, ly - 40, "НИЗ", 54, INK, anchor="middle", weight=800))
+    b.append(txt(W / 2, ly + 26, "посторонний исходник", 40, INK, anchor="middle"))
+    b.append(txt(W / 2, ly + 80, "1080 x 1056   звук не нужен", 30, "#464c5c",
+                 anchor="middle"))
+    b.append(txt(W / 2, ly + 130, "короче ролика — зациклится", 30, "#464c5c",
+                 anchor="middle"))
 
     # стык и субтитры на нём
-    d.line([0, split, W, split], fill=INK, width=6)
-    label(d, (28, split + 18), "стык 45% высоты = y 864", f_sm, INK)
-    d.line([90, split - 34, 990, split - 34], fill=ACCENT, width=6)
-    label(d, (100, split - 84), "субтитры на стыке   MarginV 1014", f_mid,
-          (150, 120, 0))
+    b.append(line(0, split, W, split, INK))
+    b.append(txt(28, split + 50, "стык 45% высоты = y 864", 30, INK))
+    b.append(line(90, split - 34, 990, split - 34, ACCENT))
+    b.append(txt(100, split - 54, "субтитры на стыке   MarginV 1014", 38, "#8a6f00"))
 
-    label(d, (W // 2, 90), "раскладка «Стример»", f_big, INK, anchor="ma")
-    return im
+    b.append(txt(W / 2, 110, "раскладка «Стример»", 54, INK,
+                 anchor="middle", weight=800))
+    return svg(W, H, b, PAPER)
 
 
-def caption_styles() -> Image.Image:
-    """Четыре стиля субтитров на нейтральном фоне."""
+def caption_styles() -> str:
+    """Четыре стиля субтитров: как каждый выглядит в кадре."""
     rows = [
-        ("hormozi", "Montserrat.ttf", 76, (255, 255, 255), (255, 217, 61),
-         None, 8, "белое + жёлтое активное слово"),
-        ("три состояния", "Oswald.ttf", 72, (255, 255, 255), (245, 158, 11),
-         (142, 142, 156), 8, "сказанное / текущее / будущее"),
-        ("плашка", "Montserrat.ttf", 68, (255, 255, 255), (255, 255, 255),
-         None, 4, "активное слово на подложке"),
-        ("неон", "Oswald.ttf", 72, (255, 255, 255), (0, 255, 255),
-         None, 3, "тонкая цветная обводка со свечением"),
+        ("hormozi", UI, EM_UI, 76, "#ffffff", "#ffd93d", None,
+         "белое + жёлтое активное слово"),
+        ("три состояния", COND, EM_COND, 72, "#ffffff", "#f59e0b", "#8e8e9c",
+         "сказанное / текущее / будущее"),
+        ("плашка", UI, EM_UI, 68, "#ffffff", "#ffffff", None,
+         "активное слово на подложке"),
+        ("неон", COND, EM_COND, 72, "#ffffff", "#00ffff", None,
+         "тонкая цветная обводка со свечением"),
     ]
-    rh = 420
-    im = Image.new("RGB", (W, rh * len(rows) + 120), (16, 18, 24))
-    d = ImageDraw.Draw(im, "RGBA")
-    f_ttl, f_note = ui(40), ui(28)
-    label(d, (W // 2, 40), "стили субтитров", ui(54), (240, 242, 248), anchor="ma")
+    words = ["ЦЕНА ", "НАКЛЕЕК ", "1760"]
+    rh, top = 420, 120
+    total_h = top + rh * len(rows)
 
-    words = ["ЦЕНА", "НАКЛЕЕК", "1760"]
-    for i, (name, fname, size, base, active, upcoming, bord, note) in enumerate(rows):
-        y0 = 120 + i * rh
-        # фон-градиент: слева тёмный, справа светлый — видно, где стиль держится
-        for x in range(0, W, 8):
-            t = x / W
-            g = int(20 + 200 * t)
-            d.rectangle([x, y0, x + 8, y0 + rh - 30], fill=(g, g + 4, g + 10))
+    b: list[str] = []
+    # мягкий градиент фона строки: слева темно, справа светло — видно,
+    # держится ли стиль на любом фоне
+    b.append('<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="0">'
+             '<stop offset="0" stop-color="#141620"/>'
+             '<stop offset="1" stop-color="#dcdee6"/></linearGradient>'
+             '<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">'
+             '<feDropShadow dx="0" dy="0" stdDeviation="7" '
+             'flood-color="#00ffff" flood-opacity="0.85"/></filter></defs>')
+    b.append(txt(W / 2, 62, "стили субтитров", 54, "#f0f2f8",
+                 anchor="middle", weight=800))
 
-        label(d, (40, y0 + 24), name, f_ttl, (255, 255, 255))
-        label(d, (40, y0 + 74), note, f_note, (190, 196, 210))
+    for i, (name, fam, em, size, base, active, upcoming, note) in enumerate(rows):
+        y0 = top + i * rh
+        b.append(rect(0, y0, W, rh - 30, "url(#g)"))
+        b.append(txt(40, y0 + 60, name, 40, "#ffffff"))
+        b.append(txt(40, y0 + 104, note, 28, "#bec4d2"))
 
-        f = font(fname, size)
-        # активное — второе слово
-        widths = [d.textlength(w, font=f) for w in words]
-        space = d.textlength(" ", font=f) or 14
-        total = sum(widths) + space * (len(words) - 1)
-        x = (W - total) / 2
-        ty = y0 + rh - 190
+        # Слова верстает сам рендерер: одна надпись по центру, слова внутри —
+        # tspan со своим цветом. Мы не считаем ширины, поэтому строка не
+        # разъезжается ни на каком наборе шрифтов.
+        ty = y0 + rh - 130
+        bord = {"hormozi": 8, "три состояния": 8, "плашка": 4, "неон": 3}[name]
+
+        spans = []
         for j, w in enumerate(words):
             col = active if j == 1 else (upcoming if (upcoming and j > 1) else base)
+            extra = ""
             if name == "плашка" and j == 1:
-                d.rounded_rectangle([x - 14, ty - 10, x + widths[j] + 14, ty + size + 18],
-                                    radius=14, fill=(255, 45, 85))
-            if name == "неон":
-                d.text((x + 3, ty + 3), w, font=f, fill=(0, 90, 90))
-            d.text((x, ty), w, font=f, fill=col,
-                   stroke_width=bord, stroke_fill=(0, 0, 0))
-            x += widths[j] + space
-    return im
+                # подложка = толстый цветной штрих вокруг самого слова.
+                # Прямоугольник пришлось бы позиционировать по ширине текста,
+                # а её мы принципиально не знаем — штрих же обнимает глифы сам.
+                extra = (' stroke="#ff2d55" stroke-width="18" '
+                         'stroke-linejoin="round" paint-order="stroke"')
+            spans.append(f'<tspan fill="{col}"{extra}>{escape(w)}</tspan>')
+
+        el = (f'<text x="{W / 2:.0f}" y="{ty:.0f}" xml:space="preserve" '
+              f'text-anchor="middle" font-family="{fam}" font-size="{size}" '
+              f'font-weight="800" fill="{base}" stroke="#000000" '
+              f'stroke-width="{bord}" stroke-linejoin="round" '
+              f'paint-order="stroke">' + "".join(spans) + '</text>')
+        # у неона обводка ещё и светится
+        b.append(f'<g filter="url(#glow)">{el}</g>' if name == "неон" else el)
+
+    return svg(W, total_h, b, "#101218")
 
 
 def main() -> None:
     OUT.mkdir(exist_ok=True)
-    for name, im in (("canvas.png", canvas_map()),
-                     ("streamer_layout.png", streamer_layout()),
-                     ("caption_styles.png", caption_styles())):
-        w, h = im.size
-        im.resize((int(w * SCALE), int(h * SCALE)), Image.LANCZOS).save(
-            OUT / name, optimize=True)
-        print(f"  {name}: {int(w * SCALE)}x{int(h * SCALE)}")
+    for name, body in (("canvas.svg", canvas_map()),
+                       ("streamer_layout.svg", streamer_layout()),
+                       ("caption_styles.svg", caption_styles())):
+        p = OUT / name
+        p.write_text(body, encoding="utf-8")
+        print(f"  {name}: {len(body.encode('utf-8')) / 1024:.1f} КБ")
 
 
 if __name__ == "__main__":

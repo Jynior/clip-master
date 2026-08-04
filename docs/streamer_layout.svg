@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="453" height="806" role="img">
+<rect x="0" y="0" width="1080" height="1920" fill="#f8f9fb" fill-opacity="1.0"/>
+<rect x="0" y="0" width="1080" height="864" fill="#6084c8" fill-opacity="0.28" stroke="#4a90ff" stroke-width="4"/>
+<rect x="0" y="864" width="1080" height="1056" fill="#60b084" fill-opacity="0.28" stroke="#42b883" stroke-width="4"/>
+<text x="540" y="392" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="54" font-weight="800" fill="#181a20" text-anchor="middle">ВЕРХ</text>
+<text x="540" y="458" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#181a20" text-anchor="middle">говорящий, вебка</text>
+<text x="540" y="512" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#464c5c" text-anchor="middle">1080 x 864   даёт звук</text>
+<text x="540" y="1352" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="54" font-weight="800" fill="#181a20" text-anchor="middle">НИЗ</text>
+<text x="540" y="1418" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#181a20" text-anchor="middle">посторонний исходник</text>
+<text x="540" y="1472" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#464c5c" text-anchor="middle">1080 x 1056   звук не нужен</text>
+<text x="540" y="1522" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#464c5c" text-anchor="middle">короче ролика — зациклится</text>
+<line x1="0" y1="864" x2="1080" y2="864" stroke="#181a20" stroke-width="6"/>
+<text x="28" y="914" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#181a20">стык 45% высоты = y 864</text>
+<line x1="90" y1="830" x2="990" y2="830" stroke="#ffd93d" stroke-width="6"/>
+<text x="100" y="810" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#8a6f00">субтитры на стыке   MarginV 1014</text>
+<text x="540" y="110" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="54" font-weight="800" fill="#181a20" text-anchor="middle">раскладка «Стример»</text>
+</svg>
