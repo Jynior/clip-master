@@ -5,11 +5,11 @@
 <rect x="0" y="120" width="1080" height="390" fill="url(#g)" fill-opacity="1.0"/>
 <text x="40" y="180" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">hormozi</text>
 <text x="40" y="224" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="#bec4d2">белое + жёлтое активное слово</text>
-<text x="40" y="262" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#8b93a6">одна строка, низ на y=1420 — позиция не меняется</text>
+<text x="40" y="262" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#cfd5e2">одна строка, низ на y=1420 — позиция не меняется</text>
 <text x="540" y="410" xml:space="preserve" text-anchor="middle" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="76" font-weight="800" fill="#ffffff" stroke="#000000" stroke-width="8" stroke-linejoin="round" paint-order="stroke"><tspan fill="#ffffff">ЦЕНА </tspan><tspan fill="#ffd93d">НАКЛЕЕК </tspan><tspan fill="#ffffff">1760</tspan></text>
 <rect x="0" y="540" width="1080" height="390" fill="url(#g)" fill-opacity="1.0"/>
 <text x="40" y="600" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">три состояния</text>
 <text x="40" y="644" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="#bec4d2">сказанное / текущее / будущее</text>
-<text x="40" y="682" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#8b93a6">одна строка, низ на y=1420 — позиция не меняется</text>
+<text x="40" y="682" font-family="Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#cfd5e2">одна строка, низ на y=1420 — позиция не меняется</text>
 <text x="540" y="830" xml:space="preserve" text-anchor="middle" font-family="Oswald, 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="800" fill="#ffffff" stroke="#000000" stroke-width="8" stroke-linejoin="round" paint-order="stroke"><tspan fill="#ffffff">ЦЕНА </tspan><tspan fill="#f59e0b">НАКЛЕЕК </tspan><tspan fill="#8e8e9c">1760</tspan></text>
 </svg>

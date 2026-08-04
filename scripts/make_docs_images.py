@@ -48,17 +48,9 @@ MUTED = "#6e7480"
 UI = "Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif"
 COND = "Oswald, 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif"
 
-# Средняя ширина глифа в долях кегля — нужна только чтобы посчитать textLength.
-# Дальше рендерер подгоняет текст под эту ширину, так что точность здесь не
-# критична: важно лишь, чтобы пропорции слов были похожи на правду.
-EM_UI = 0.62
-EM_COND = 0.50
-
-
 def txt(x: float, y: float, s: str, size: int, fill: str = INK,
         anchor: str = "start", family: str = UI, weight: int = 700,
-        length: float | None = None, stroke: str | None = None,
-        sw: float = 0.0) -> str:
+        stroke: str | None = None, sw: float = 0.0) -> str:
     """
     Одна надпись. anchor: start | middle | end.
 
@@ -67,13 +59,11 @@ def txt(x: float, y: float, s: str, size: int, fill: str = INK,
     дала бы двойной набор глифов и рассинхрон при переносе шрифта.
     """
     a = f' text-anchor="{anchor}"' if anchor != "start" else ""
-    tl = (f' textLength="{length:.0f}" lengthAdjust="spacingAndGlyphs"'
-          if length else "")
     so = (f' stroke="{stroke}" stroke-width="{sw:.1f}" stroke-linejoin="round"'
           f' paint-order="stroke"' if stroke else "")
     return (f'<text x="{x:.0f}" y="{y:.0f}" font-family="{family}" '
             f'font-size="{size}" font-weight="{weight}" fill="{fill}"'
-            f'{a}{tl}{so}>{escape(s)}</text>')
+            f'{a}{so}>{escape(s)}</text>')
 
 
 def rect(x: float, y: float, w: float, h: float, fill: str = "none",
@@ -174,9 +164,9 @@ def streamer_layout() -> str:
 def caption_styles() -> str:
     """Два стиля субтитров: как каждый выглядит в кадре."""
     rows = [
-        ("hormozi", UI, EM_UI, 76, "#ffffff", "#ffd93d", None,
+        ("hormozi", UI, 76, "#ffffff", "#ffd93d", None,
          "белое + жёлтое активное слово"),
-        ("три состояния", COND, EM_COND, 72, "#ffffff", "#f59e0b", "#8e8e9c",
+        ("три состояния", COND, 72, "#ffffff", "#f59e0b", "#8e8e9c",
          "сказанное / текущее / будущее"),
     ]
     words = ["ЦЕНА ", "НАКЛЕЕК ", "1760"]
@@ -193,13 +183,13 @@ def caption_styles() -> str:
     b.append(txt(W / 2, 62, "стили субтитров", 54, "#f0f2f8",
                  anchor="middle", weight=800))
 
-    for i, (name, fam, em, size, base, active, upcoming, note) in enumerate(rows):
+    for i, (name, fam, size, base, active, upcoming, note) in enumerate(rows):
         y0 = top + i * rh
         b.append(rect(0, y0, W, rh - 30, "url(#g)"))
         b.append(txt(40, y0 + 60, name, 40, "#ffffff"))
         b.append(txt(40, y0 + 104, note, 28, "#bec4d2"))
         b.append(txt(40, y0 + 142, "одна строка, низ на y=1420 — позиция не меняется",
-                     24, "#8b93a6"))
+                     24, "#cfd5e2"))
 
         # Слова верстает сам рендерер: одна надпись по центру, слова внутри —
         # tspan со своим цветом. Мы не считаем ширины, поэтому строка не
