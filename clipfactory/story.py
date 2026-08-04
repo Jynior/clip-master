@@ -20,6 +20,7 @@ story.py — разбор смысловой структуры ролика и 
      помечается как обрывающий развязку.
 
 Использование:
+    python3 story.py --transcript t.json --target 60      # дефолт: 52-68 с
     python3 story.py --transcript t.json --target 60 --min 45 --max 120
     python3 story.py --transcript t.json --target 60 --at 371 --json
 """
@@ -293,8 +294,8 @@ def main() -> None:
     ap.add_argument("--transcript", required=True)
     ap.add_argument("--total", type=float, default=None, help="длина исходника, с")
     ap.add_argument("--target", type=float, default=60.0)
-    ap.add_argument("--min", dest="min_dur", type=float, default=45.0)
-    ap.add_argument("--max", dest="max_dur", type=float, default=120.0)
+    ap.add_argument("--min", dest="min_dur", type=float, default=52.0)
+    ap.add_argument("--max", dest="max_dur", type=float, default=68.0)
     ap.add_argument("--at", type=float, default=None, help="проверить один вход")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()

@@ -130,7 +130,7 @@ def split_region(sents: list[dict], a: float, b: float, target: float,
 
 
 def build_plan(sents: list[dict], total: float, target: float = 60.0,
-               min_dur: float = 40.0, max_dur: float = 95.0,
+               min_dur: float = 52.0, max_dur: float = 68.0,
                min_part: float = 20.0) -> dict:
     spans = sponsor_spans(sents)
     regions = clean_regions(total, spans)
@@ -170,8 +170,8 @@ def main() -> None:
     ap.add_argument("--transcript", required=True)
     ap.add_argument("--total", type=float, required=True)
     ap.add_argument("--target", type=float, default=60.0)
-    ap.add_argument("--min", dest="min_dur", type=float, default=40.0)
-    ap.add_argument("--max", dest="max_dur", type=float, default=95.0)
+    ap.add_argument("--min", dest="min_dur", type=float, default=52.0)
+    ap.add_argument("--max", dest="max_dur", type=float, default=68.0)
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -194,7 +194,15 @@ def main() -> None:
     print(f"\nчистого материала: "
           f"{plan['total'] - plan['sponsor_total']:.0f} с в "
           f"{len(plan['clean_regions'])} участках")
+    bad = [x for x in plan["parts"] if x["quality"] == "обрывает развязку"]
     print(f"\nчастей: {len(plan['parts'])}")
+    if bad:
+        print(f"ВНИМАНИЕ: {len(bad)} из {len(plan['parts'])} частей обрывают "
+              f"развязку на диапазоне {args.min_dur:.0f}-{args.max_dur:.0f} с.")
+        print("  Это цена жёсткой минуты: в этих местах мысль не закрывается "
+              "внутри диапазона.")
+        print("  Лечится одним числом: --max 90. Части станут длиннее минуты, "
+              "зато закроются.")
     for p in plan["parts"]:
         rng = " + ".join(f"{a:.1f}–{b:.1f}" for a, b in p["source_ranges"])
         mark = "  [СКЛЕЙКА]" if p["spliced"] else ""
