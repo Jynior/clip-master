@@ -142,10 +142,83 @@ def build(top: str, bottom: str, out: str, dur: float | None,
     }
 
 
+def overlay_on(base: str, out: str, captions: str | None = None,
+               banner: str | None = None, banner_at: float | None = None,
+               banner_width: float = 0.88, duck_db: float | None = None,
+               banner_gain_db: float = -2.0, draft: bool = False) -> dict:
+    """
+    Наложение баннера и субтитров на УЖЕ СОБРАННУЮ вертикальную раскладку.
+
+    Нужно потому, что при варианте с паузой порядок другой: сначала панели
+    склеиваются, потом в готовую раскладку вставляется остановка (замереть
+    должны обе панели), и только после этого сверху идут баннер и субтитры.
+    Пропустить это через build() нельзя — там композиция ещё не готова.
+
+    duck_db=None означает, что основной звук не приглушается: при паузе он
+    и так молчит, а лишнее приглушение только съело бы остаток атмосферы.
+    """
+    mb = probe(base)
+    parts: list[str] = []
+    inputs = ["-i", base]
+    vlab = "[0:v]"
+    t0 = t1 = None
+
+    if banner:
+        mban = probe(banner)
+        t0 = (mb["duration"] - mban["duration"]) / 2 if banner_at is None else banner_at
+        t1 = t0 + mban["duration"]
+        inputs += ["-i", banner]
+        bw = int(OUT_W * banner_width) // 2 * 2
+        parts.append(
+            f"[1:v]format=rgba,colorkey=0x00FF01:0.16:0.06,"
+            f"geq=r='r(X,Y)':g='if(gt(g(X,Y),(r(X,Y)+b(X,Y))/2),"
+            f"g(X,Y)-1.0*(g(X,Y)-(r(X,Y)+b(X,Y))/2),g(X,Y))':"
+            f"b='b(X,Y)':a='alpha(X,Y)',"
+            f"fade=t=in:st=0:d=0.12:alpha=1,"
+            f"fade=t=out:st={max(0.0, mban['duration'] - 0.12):.3f}:d=0.12:alpha=1,"
+            f"scale={bw}:-2:flags=lanczos,setpts=PTS-STARTPTS+{t0}/TB[bn]")
+        parts.append(f"{vlab}[bn]overlay=x=(W-w)/2:y=(H-h)/2:"
+                     f"enable='between(t,{t0:.3f},{t1:.3f})':eof_action=pass[vb]")
+        vlab = "[vb]"
+
+    if captions:
+        parts.append(f"{vlab}subtitles={captions}:fontsdir={FONTS}[vout]")
+    else:
+        parts.append(f"{vlab}null[vout]")
+
+    if banner and probe(banner)["has_audio"] and mb["has_audio"]:
+        duck = "" if duck_db is None else (
+            f",volume=enable='between(t,{t0:.3f},{t1:.3f})':volume={duck_db}dB")
+        parts.append(f"[0:a]loudnorm=I=-14:TP=-1.5:LRA=11{duck}[mainA]")
+        parts.append(f"[1:a]volume={banner_gain_db}dB,"
+                     f"adelay={int(t0 * 1000)}|{int(t0 * 1000)},apad,"
+                     f"atrim=0:{t1 + 0.5:.3f},asetpts=PTS-STARTPTS[banA]")
+        parts.append("[mainA][banA]amix=inputs=2:duration=first:"
+                     "dropout_transition=0:normalize=0,"
+                     "alimiter=limit=0.794:attack=5:release=60:level=disabled[aout]")
+        amap, afilter = "[aout]", []
+    else:
+        amap, afilter = "0:a?", ["-af", "loudnorm=I=-14:TP=-1.5:LRA=11"]
+
+    cmd = ["ffmpeg", "-nostdin", "-y", "-v", "error"] + inputs + [
+        "-filter_complex", ";".join(parts), "-map", "[vout]", "-map", amap
+    ] + afilter + [
+        "-c:v", "libx264", "-preset", "veryfast" if draft else "slow",
+        "-crf", "21" if draft else "20", "-profile:v", "high",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+        "-movflags", "+faststart", out]
+    cp = subprocess.run(cmd, capture_output=True, text=True,
+                        stdin=subprocess.DEVNULL)
+    if cp.returncode != 0:
+        raise SystemExit(f"Наложение упало:\n{cp.stderr[-2200:]}")
+    return {"out": out, "duration": round(probe(out)["duration"], 2),
+            "banner": None if t0 is None else f"{t0:.2f}–{t1:.2f}"}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Раскладка «стример»: вебка + исходник")
-    ap.add_argument("--top", required=True, help="видео со стримером (даёт звук)")
-    ap.add_argument("--bottom", required=True, help="исходник снизу (без звука)")
+    ap.add_argument("--top", default=None, help="видео со стримером (даёт звук)")
+    ap.add_argument("--bottom", default=None, help="исходник снизу (без звука)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--dur", type=float, default=None)
     ap.add_argument("--captions", default=None)
@@ -159,7 +232,25 @@ def main() -> None:
     ap.add_argument("--draft", action="store_true")
     ap.add_argument("--auto-focus", action="store_true",
                     help="взять центр лица из detect.py")
+    ap.add_argument("--on", default=None,
+                    help="наложить баннер и субтитры на готовую раскладку "
+                         "(для варианта с паузой); --top и --bottom тогда не нужны")
+    ap.add_argument("--duck", type=float, default=None,
+                    help="приглушение основного звука; при паузе не нужно")
+    ap.add_argument("--banner-gain", type=float, default=-2.0)
     args = ap.parse_args()
+
+    if args.on:
+        r = overlay_on(args.on, args.out, args.captions, args.banner,
+                       args.banner_at, 0.88, args.duck, args.banner_gain,
+                       args.draft)
+        print(f"{r['out']}: {r['duration']} с")
+        if r["banner"]:
+            print(f"  баннер: {r['banner']} с")
+        return
+
+    if not (args.top and args.bottom):
+        raise SystemExit("Нужны --top и --bottom, либо --on для готовой раскладки.")
 
     fx, fy = args.focus_x, args.focus_y
     if args.auto_focus:
